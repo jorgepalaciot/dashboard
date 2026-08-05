@@ -184,7 +184,7 @@
 </div>
 
 <script>
-  const API_URL = "https://script.google.com/macros/s/AKfycbw77tOb6wOb6Y8mS7zEfOOYwIFmiNOrHQ10r7k2ZO-XtgpDf2rMBnsebFh3vR0WgiNUKg/exec";
+  const API_URL = "https://script.google.com/macros/s/AKfycbz9cfeiqVFFh_xpusy3EhXloR9g64eIMVsOisgp_qf_Of5QPDhZOXyvEb8OfHWjEoZwKA/exec";
   const NOMBRE_USUARIO = "Jorge";
   const CACHE_KEY = 'dashboard_data';
   const CACHE_TIME = 60 * 60 * 1000; // 1 hora
@@ -516,4 +516,145 @@
     const saveTaskBtn = document.getElementById('saveAreaTaskBtn');
     if(saveTaskBtn){
       const newBtn = saveTaskBtn.cloneNode(true);
-      saveTaskBtn.parentNode
+      saveTaskBtn.parentNode.replaceChild(newBtn, saveTaskBtn);
+      newBtn.addEventListener('click', async () => {
+        const input = document.getElementById('newAreaTaskInput');
+        if(!input.value.trim()) return;
+        const priority = document.getElementById('newAreaTaskPriority').value;
+        await postSilent({ action:'addTask', title: input.value.trim(), priority, areaId: selectedAreaId });
+        input.value = '';
+        await refreshData();
+      });
+    }
+  }
+
+  // ---------- Postulaciones ----------
+  const STATUS_OPTIONS = ['Postulado','Entrevista','Esperando respuesta','Aceptado','Rechazado'];
+  function renderApps(apps){
+    const el = document.getElementById('appsList');
+    if(!apps || !apps.length){ el.innerHTML = '<div class="empty">Sin postulaciones registradas.</div>'; return; }
+    el.innerHTML = apps.map(a => `
+      <div class="app-row">
+        <div class="app-head">
+          <div>
+            <div class="app-name">${a.name}</div>
+            <div class="app-type">${a.type} · ${a.date}</div>
+          </div>
+          <select class="status-badge" data-id="${a.id}">
+            ${STATUS_OPTIONS.map(s => `<option value="${s}" ${s===a.status?'selected':''}>${s}</option>`).join('')}
+          </select>
+        </div>
+        ${a.notes ? `<div class="app-notes">${a.notes}</div>` : ''}
+      </div>
+    `).join('');
+    el.querySelectorAll('.status-badge').forEach(sel => {
+      sel.addEventListener('change', async () => {
+        await postSilent({ action:'updateApplicationStatus', id: sel.dataset.id, status: sel.value });
+      });
+    });
+  }
+
+  // ---------- Formularios ----------
+  function updateAreaSelector(){
+    const select = document.getElementById('taskAreaInput');
+    select.innerHTML = '<option value="">Ninguna</option>';
+    if(lastData && lastData.areas){
+      lastData.areas.forEach(a => {
+        select.innerHTML += `<option value="${a.id}">${a.label}</option>`;
+      });
+    }
+  }
+
+  document.getElementById('showTaskForm').addEventListener('click', () => {
+    const f = document.getElementById('taskForm');
+    f.style.display = f.style.display === 'flex' ? 'none' : 'flex';
+    updateAreaSelector();
+  });
+  
+  document.getElementById('saveTaskBtn').addEventListener('click', async () => {
+    const title = document.getElementById('taskTitleInput').value.trim();
+    if(!title) return;
+    const priority = document.getElementById('taskPriorityInput').value;
+    const areaId = document.getElementById('taskAreaInput').value;
+    await postSilent({ action:'addTaskToday', title, priority, areaId });
+    document.getElementById('taskTitleInput').value = '';
+    await refreshData();
+  });
+
+  document.getElementById('showAreaForm').addEventListener('click', () => {
+    const f = document.getElementById('areaForm');
+    f.style.display = f.style.display === 'flex' ? 'none' : 'flex';
+  });
+  document.getElementById('saveAreaBtn').addEventListener('click', async () => {
+    const label = document.getElementById('areaLabelInput').value.trim();
+    if(!label) return;
+    await postSilent({ action:'addArea', label });
+    document.getElementById('areaLabelInput').value = '';
+    await refreshData();
+  });
+
+  document.getElementById('showAppForm').addEventListener('click', () => {
+    const f = document.getElementById('appForm');
+    f.style.display = f.style.display === 'flex' ? 'none' : 'flex';
+  });
+  document.getElementById('saveAppBtn').addEventListener('click', async () => {
+    const name = document.getElementById('appNameInput').value.trim();
+    if(!name) return;
+    const type = document.getElementById('appTypeInput').value;
+    await postSilent({ action:'addApplication', type, name, status:'Postulado' });
+    document.getElementById('appNameInput').value = '';
+    await refreshData();
+  });
+
+  document.getElementById('historyToggle').addEventListener('click', () => {
+    const chart = document.getElementById('historyChart');
+    chart.style.display = chart.style.display === 'flex' ? 'none' : 'flex';
+  });
+
+  // ---------- Carga y refresco ----------
+  async function refreshData(){
+    // Invalidar caché del servidor
+    // No podemos invalidar directamente, pero podemos forzar recarga con un timestamp
+    await loadDashboard(true);
+  }
+
+  async function loadDashboard(silent){
+    try {
+      // Primero mostrar datos cacheados si existen
+      const cached = getCachedData();
+      if(cached && cached.data){
+        renderAll(cached.data);
+        if(!silent){
+          document.getElementById('loadingMsg').style.display = 'none';
+          document.getElementById('content').style.display = 'block';
+        }
+      }
+      
+      // Luego cargar datos frescos del servidor
+      const data = await fetchJSONP(API_URL + '?view=dashboard&t=' + Date.now());
+      
+      // Guardar en caché local
+      setCachedData(data);
+      
+      // Renderizar con datos frescos
+      renderAll(data);
+      
+      if(!silent){
+        document.getElementById('loadingMsg').style.display = 'none';
+        document.getElementById('content').style.display = 'block';
+      }
+    } catch(err) {
+      console.error('Error loading dashboard:', err);
+      // Si no hay datos cacheados, mostrar error
+      if(!getCachedData()){
+        document.getElementById('loadingMsg').textContent = 'No se pudo cargar el dashboard. Revisa API_URL.';
+      }
+    }
+  }
+
+  // Iniciar
+  loadTicker();
+  loadDashboard(false);
+</script>
+</body>
+</html>
