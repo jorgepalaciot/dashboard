@@ -332,7 +332,6 @@
           if (!confirmed) return;
         }
         
-        // Actualizar visualmente
         chk.classList.toggle('done', newDone);
         chk.textContent = newDone ? '✓' : '';
         chk.dataset.done = newDone;
@@ -346,7 +345,10 @@
   }
 
   function renderScore(done, total){
-    document.getElementById('scoreBadge').textContent = `${done} / ${total}`;
+    const badge = document.getElementById('scoreBadge');
+    if (badge) {
+      badge.textContent = `${done} / ${total}`;
+    }
   }
 
   function renderHistory(history){
@@ -613,8 +615,6 @@
 
   // ---------- Carga y refresco ----------
   async function refreshData(){
-    // Invalidar caché del servidor
-    // No podemos invalidar directamente, pero podemos forzar recarga con un timestamp
     await loadDashboard(true);
   }
 
