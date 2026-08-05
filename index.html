@@ -39,6 +39,7 @@
   .task-title,.area-task-title{flex:1;font-size:14.5px;}
   .task-title.done,.area-task-title.done{text-decoration:line-through;color:var(--dim);}
   .task-area-tag{font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--steel);background:var(--paper);padding:2px 8px;border-radius:10px;}
+  .tasks-toggle{text-align:center;padding:10px 0 2px;font-family:'IBM Plex Mono',monospace;font-size:11.5px;color:var(--steel);cursor:pointer;}
   .add-btn{width:100%;margin-top:10px;padding:10px;border:1px dashed var(--line);border-radius:10px;background:none;font-family:'Space Grotesk',sans-serif;font-size:13.5px;color:var(--steel);cursor:pointer;}
   .inline-form{display:none;gap:8px;margin-top:10px;flex-wrap:wrap;}
   .inline-form input[type=text]{flex:1;min-width:140px;padding:9px 12px;border:1px solid var(--line);border-radius:8px;font-family:'Space Grotesk',sans-serif;font-size:13.5px;}
@@ -151,7 +152,7 @@
 </div>
 
 <script>
-  const API_URL = "https://script.google.com/macros/s/AKfycbxDJpaz28q8na4KaBCU5032awqUuqD9fzSGlSmUwbV_teKep9LHKPWa8KWK4oo43aga9w/exec";
+  const API_URL = "https://script.google.com/macros/s/AKfycbxou0RrYsgGxiVxBuqS8--7GvuS0YQc2-6xRxAYI0WZ4COvmpjmveeiz7ce-8VOK79H/exec";
   const NOMBRE_USUARIO = "Jorge";
   const STATUS_OPTIONS = ['Postulado','Entrevista','Esperando respuesta','Aceptado','Rechazado'];
 
@@ -227,6 +228,9 @@
     if(selectedAreaId) renderAreaDetail();
   }
 
+  const TASKS_VISIBLE_LIMIT = 5;
+  let tasksExpanded = false;
+
   function renderTasks(tasks){
     const el = document.getElementById('tasksList');
     if(!tasks || !tasks.length){ el.innerHTML = '<div class="empty">Sin tareas para hoy. ¡Agrega una!</div>'; return; }
@@ -235,7 +239,10 @@
     const areaMap = {};
     (lastData.areas || []).forEach(a => areaMap[a.id] = a.label);
 
-    el.innerHTML = tasks.map(t => {
+    const hidden = tasks.length - TASKS_VISIBLE_LIMIT;
+    const visibleTasks = tasksExpanded ? tasks : tasks.slice(0, TASKS_VISIBLE_LIMIT);
+
+    const rowHtml = t => {
       const isDone = t.done === true || t.done === 'true';
       const areaLabel = t.areaId && areaMap[t.areaId] || '';
       return `
@@ -244,7 +251,10 @@
           <div class="task-check ${isDone?'done':''}" data-id="${t.id}" data-done="${isDone}">${isDone?'✓':''}</div>
           <div class="task-title ${isDone?'done':''}">${t.title} ${areaLabel ? `<span class="task-area-tag">${areaLabel}</span>` : ''}</div>
         </div>`;
-    }).join('');
+    };
+
+    el.innerHTML = visibleTasks.map(rowHtml).join('') +
+      (hidden > 0 ? `<div class="tasks-toggle" id="tasksToggle">${tasksExpanded ? '▲ Ver menos' : `▼ Ver ${hidden} más`}</div>` : '');
 
     el.querySelectorAll('.task-check').forEach(chk => {
       chk.addEventListener('click', () => {
@@ -252,6 +262,8 @@
         toggleWithConfirm('toggleTask', chk.dataset.id, chk.dataset.done === 'true', task.title);
       });
     });
+    const toggleEl = document.getElementById('tasksToggle');
+    if(toggleEl) toggleEl.addEventListener('click', () => { tasksExpanded = !tasksExpanded; renderTasks(tasks); });
   }
 
   const renderScore = (done, total) => document.getElementById('scoreBadge').textContent = `${done} / ${total}`;
