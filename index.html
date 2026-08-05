@@ -1,4 +1,4 @@
-<!-- VERSION4 - Áreas con tareas asociadas -->
+<!-- VERSION4 - Áreas con tareas asociadas (CORREGIDO) -->
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -199,12 +199,11 @@
 
 <script>
   // Pega aquí la URL de tu Web App de Apps Script (debe terminar en /exec)
-  const API_URL = "https://script.google.com/macros/s/AKfycbz9cfeiqVFFh_xpusy3EhXloR9g64eIMVsOisgp_qf_Of5QPDhZOXyvEb8OfHWjEoZwKA/exec";
+  const API_URL = "https://script.google.com/macros/s/AKfycbw77tOb6wOb6Y8mS7zEfOOYwIFmiNOrHQ10r7k2ZO-XtgpDf2rMBnsebFh3vR0WgiNUKg/exec";
   const NOMBRE_USUARIO = "Jorge";
 
   let lastData = null;
   let selectedAreaId = null;
-  let pendingAction = null; // Para el modal de confirmación
 
   // ---------- Saludo dinámico ----------
   function setGreeting(){
@@ -216,7 +215,7 @@
   document.getElementById('today').textContent = new Date().toLocaleDateString('es-PE', { weekday:'long', day:'numeric', month:'long' });
 
   // ---------- Modal de confirmación ----------
-  function showConfirm(title, message, onConfirm) {
+  function showConfirm(title, message) {
     return new Promise((resolve) => {
       const modal = document.getElementById('confirmModal');
       document.getElementById('modalTitle').textContent = title;
@@ -235,6 +234,9 @@
       const onConfirmHandler = () => { cleanup(); resolve(true); };
       const onCancelHandler = () => { cleanup(); resolve(false); };
       
+      // Reemplazar listeners anteriores
+      confirmBtn.onclick = null;
+      cancelBtn.onclick = null;
       confirmBtn.addEventListener('click', onConfirmHandler);
       cancelBtn.addEventListener('click', onCancelHandler);
     });
@@ -277,7 +279,7 @@
   // ---------- Tareas de hoy ----------
   function renderTasks(tasks){
     const el = document.getElementById('tasksList');
-    if(!tasks.length){ el.innerHTML = '<div class="empty">Sin tareas para hoy. ¡Agrega una!</div>'; return; }
+    if(!tasks || !tasks.length){ el.innerHTML = '<div class="empty">Sin tareas para hoy. ¡Agrega una!</div>'; return; }
     const order = { alta:0, media:1, baja:2 };
     tasks.sort((a,b) => (a.done - b.done) || (order[a.priority]-order[b.priority]));
     
@@ -309,8 +311,7 @@
           const task = tasks.find(t => t.id === id);
           const confirmed = await showConfirm(
             '✅ Completar tarea',
-            `¿Estás seguro que quieres completar "${task.title}"?`,
-            () => {}
+            `¿Estás seguro que quieres completar "${task.title}"?`
           );
           if (!confirmed) return;
         }
@@ -345,6 +346,10 @@
   // ---------- Áreas de progreso ----------
   function renderAreas(areas){
     const grid = document.getElementById('areasGrid');
+    if(!areas || !areas.length){
+      grid.innerHTML = '<div class="empty">Sin áreas creadas. Crea una con "+ Nueva área"</div>';
+      return;
+    }
     grid.innerHTML = areas.map(a => {
       const c = 2*Math.PI*30;
       const offset = c * (1 - a.percent/100);
@@ -370,12 +375,19 @@
 
   function renderAreaDetail(){
     const detail = document.getElementById('areaDetail');
+    if(!lastData || !lastData.areas){
+      detail.style.display = 'none';
+      return;
+    }
     const area = lastData.areas.find(a => a.id === selectedAreaId);
-    if(!area){ detail.style.display = 'none'; return; }
+    if(!area){ 
+      detail.style.display = 'none'; 
+      return; 
+    }
     detail.style.display = 'block';
     
     // Items de progreso (checklist)
-    const itemsHtml = area.items.length ? area.items.map(i => `
+    const itemsHtml = area.items && area.items.length ? area.items.map(i => `
       <div class="item-row ${i.done?'done':''}">
         <div class="item-check ${i.done?'done':''}" data-id="${i.id}" data-done="${i.done}"></div>
         <div class="item-label">${i.label}</div>
@@ -383,12 +395,13 @@
     `).join('') : '<div class="empty">Sin items de progreso aún.</div>';
     
     // Tareas asociadas al área
-    const tasksHtml = area.tasks && area.tasks.length ? area.tasks.map(t => {
+    const areaTasks = area.tasks || [];
+    const tasksHtml = areaTasks.length ? areaTasks.map(t => {
       const isToday = t.isToday === true || t.isToday === 'true';
       const isDone = t.done === true || t.done === 'true';
       return `
         <div class="area-task-row">
-          <div class="area-task-priority ${t.priority}" style="background:${t.priority === 'alta' ? 'var(--hi)' : t.priority === 'media' ? 'var(--mid)' : 'var(--lo)'}"></div>
+          <div class="area-task-priority" style="background:${t.priority === 'alta' ? 'var(--hi)' : t.priority === 'media' ? 'var(--mid)' : 'var(--lo)'};"></div>
           <div class="area-task-check ${isDone?'done':''}" data-id="${t.id}" data-done="${isDone}">${isDone?'✓':''}</div>
           <div class="area-task-title ${isDone?'done':''}">${t.title}</div>
           <button class="today-toggle ${isToday?'active':''}" data-id="${t.id}" data-today="${isToday}">${isToday ? '✓ Hoy' : '+ Hoy'}</button>
@@ -430,8 +443,7 @@
           const item = area.items.find(i => i.id === id);
           const confirmed = await showConfirm(
             '✅ Completar item',
-            `¿Estás seguro que quieres completar "${item.label}"?`,
-            () => {}
+            `¿Estás seguro que quieres completar "${item.label}"?`
           );
           if (!confirmed) return;
         }
@@ -441,11 +453,12 @@
         chk.parentElement.classList.toggle('done', newDone);
         await postSilent({ action:'toggleAreaItem', id, done: newDone });
         await loadDashboard(true);
+        // Re-renderizar el detalle después de actualizar
         renderAreaDetail();
       });
     });
     
-    // Eventos para tareas del área
+    // Eventos para tareas del área (check de completar)
     detail.querySelectorAll('.area-task-check').forEach(chk => {
       chk.addEventListener('click', async () => {
         const id = chk.dataset.id;
@@ -453,11 +466,10 @@
         const newDone = !currentDone;
         
         if (newDone) {
-          const task = area.tasks.find(t => t.id === id);
+          const task = areaTasks.find(t => t.id === id);
           const confirmed = await showConfirm(
             '✅ Completar tarea',
-            `¿Estás seguro que quieres completar "${task.title}"?`,
-            () => {}
+            `¿Estás seguro que quieres completar "${task.title}"?`
           );
           if (!confirmed) return;
         }
@@ -490,34 +502,45 @@
     });
     
     // Agregar nuevo item de progreso
-    document.getElementById('saveItemBtn').addEventListener('click', async () => {
-      const input = document.getElementById('newItemInput');
-      if(!input.value.trim()) return;
-      await postSilent({ action:'addAreaItem', areaId: selectedAreaId, label: input.value.trim() });
-      input.value = '';
-      await new Promise(r => setTimeout(r, 600));
-      await loadDashboard(true);
-      renderAreaDetail();
-    });
+    const saveItemBtn = document.getElementById('saveItemBtn');
+    if(saveItemBtn){
+      // Remover listener anterior
+      const newSaveItemBtn = saveItemBtn.cloneNode(true);
+      saveItemBtn.parentNode.replaceChild(newSaveItemBtn, saveItemBtn);
+      newSaveItemBtn.addEventListener('click', async () => {
+        const input = document.getElementById('newItemInput');
+        if(!input.value.trim()) return;
+        await postSilent({ action:'addAreaItem', areaId: selectedAreaId, label: input.value.trim() });
+        input.value = '';
+        await new Promise(r => setTimeout(r, 600));
+        await loadDashboard(true);
+        renderAreaDetail();
+      });
+    }
     
     // Agregar nueva tarea del área
-    document.getElementById('saveAreaTaskBtn').addEventListener('click', async () => {
-      const input = document.getElementById('newAreaTaskInput');
-      if(!input.value.trim()) return;
-      const priority = document.getElementById('newAreaTaskPriority').value;
-      await postSilent({ action:'addTask', title: input.value.trim(), priority, areaId: selectedAreaId });
-      input.value = '';
-      await new Promise(r => setTimeout(r, 600));
-      await loadDashboard(true);
-      renderAreaDetail();
-    });
+    const saveAreaTaskBtn = document.getElementById('saveAreaTaskBtn');
+    if(saveAreaTaskBtn){
+      const newSaveAreaTaskBtn = saveAreaTaskBtn.cloneNode(true);
+      saveAreaTaskBtn.parentNode.replaceChild(newSaveAreaTaskBtn, saveAreaTaskBtn);
+      newSaveAreaTaskBtn.addEventListener('click', async () => {
+        const input = document.getElementById('newAreaTaskInput');
+        if(!input.value.trim()) return;
+        const priority = document.getElementById('newAreaTaskPriority').value;
+        await postSilent({ action:'addTask', title: input.value.trim(), priority, areaId: selectedAreaId });
+        input.value = '';
+        await new Promise(r => setTimeout(r, 600));
+        await loadDashboard(true);
+        renderAreaDetail();
+      });
+    }
   }
 
   // ---------- Postulaciones ----------
   const STATUS_OPTIONS = ['Postulado','Entrevista','Esperando respuesta','Aceptado','Rechazado'];
   function renderApps(apps){
     const el = document.getElementById('appsList');
-    if(!apps.length){ el.innerHTML = '<div class="empty">Sin postulaciones registradas.</div>'; return; }
+    if(!apps || !apps.length){ el.innerHTML = '<div class="empty">Sin postulaciones registradas.</div>'; return; }
     el.innerHTML = apps.map(a => `
       <div class="app-row">
         <div class="app-head">
@@ -609,12 +632,19 @@
       renderHistory(data.scoreHistory);
       renderAreas(data.areas);
       renderApps(data.applications);
+      
+      // Si hay un área seleccionada, re-renderizar su detalle
+      if(selectedAreaId){
+        renderAreaDetail();
+      }
+      
       if(!silent){
         document.getElementById('loadingMsg').style.display = 'none';
         document.getElementById('content').style.display = 'block';
       }
     }catch(err){
       document.getElementById('loadingMsg').textContent = 'No se pudo cargar el dashboard. Revisa API_URL.';
+      console.error(err);
     }
   }
 
