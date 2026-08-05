@@ -329,8 +329,8 @@
     });
   }
 
-  function renderScore(score){
-    document.getElementById('scoreBadge').textContent = `${score} / 100`;
+  function renderScore(done, total){
+  document.getElementById('scoreBadge').textContent = `${done} / ${total}`;
   }
 
   function renderHistory(history){
