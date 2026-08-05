@@ -1,4 +1,4 @@
-<!-- VERSION4 mockup instructions inserted -->
+<!-- VERSION4 - Áreas con tareas asociadas -->
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -12,6 +12,7 @@
     --ink:#0F1419; --dim:#536471; --line:#EBEEF0;
     --steel:#3D5A80; --amber:#EE6C4D; --paper:#F7F4EE;
     --hi:#D64545; --mid:#D6A72A; --lo:#4C7A5A; --bg:#fff;
+    --green:#4C7A5A;
   }
   *{box-sizing:border-box;}
   body{margin:0;background:var(--paper);color:var(--ink);font-family:'Space Grotesk',sans-serif;-webkit-font-smoothing:antialiased;}
@@ -45,6 +46,7 @@
   .task-priority.baja{background:var(--lo);}
   .task-title{flex:1;font-size:14.5px;}
   .task-title.done{text-decoration:line-through;color:var(--dim);}
+  .task-area-tag{font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--steel);background:var(--paper);padding:2px 8px;border-radius:10px;}
 
   .add-btn{
     width:100%;margin-top:10px;padding:10px;border:1px dashed var(--line);border-radius:10px;
@@ -69,11 +71,27 @@
   .area-card svg{transform:rotate(-90deg);}
   .area-card .pct{font-family:'IBM Plex Mono',monospace;font-size:14px;font-weight:600;}
   .area-card .lbl{font-size:11.5px;margin-top:4px;line-height:1.3;}
+
+  /* Area detail */
   .area-detail{display:none;margin-top:14px;border:1px solid var(--line);border-radius:10px;padding:12px;}
+  .area-detail .section-subtitle{font-weight:600;font-size:13px;margin:12px 0 8px;color:var(--steel);}
+  .area-detail .section-subtitle:first-of-type{margin-top:0;}
   .area-detail .item-row{display:flex;align-items:center;gap:8px;padding:6px 0;font-size:13px;}
   .area-detail .item-row.done .item-label{text-decoration:line-through;color:var(--dim);}
   .item-check{width:16px;height:16px;border-radius:4px;border:2px solid var(--line);flex:0 0 auto;cursor:pointer;}
   .item-check.done{background:var(--lo);border-color:var(--lo);}
+  
+  /* Area tasks */
+  .area-task-row{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--line);font-size:13px;}
+  .area-task-row:last-child{border-bottom:none;}
+  .area-task-check{width:18px;height:18px;border-radius:50%;border:2px solid var(--line);flex:0 0 auto;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:11px;}
+  .area-task-check.done{background:var(--lo);border-color:var(--lo);color:#fff;}
+  .area-task-check.today{background:var(--steel);border-color:var(--steel);color:#fff;}
+  .area-task-title{flex:1;}
+  .area-task-title.done{text-decoration:line-through;color:var(--dim);}
+  .today-toggle{font-family:'IBM Plex Mono',monospace;font-size:10px;padding:2px 10px;border-radius:10px;border:1px solid var(--steel);background:transparent;color:var(--steel);cursor:pointer;}
+  .today-toggle.active{background:var(--steel);color:#fff;}
+  .area-task-priority{width:3px;align-self:stretch;border-radius:2px;flex:0 0 auto;}
 
   /* Applications */
   .app-row{padding:10px 0;border-bottom:1px solid var(--line);}
@@ -85,6 +103,16 @@
   .app-notes{font-size:12.5px;color:var(--dim);margin-top:2px;}
 
   .loading{padding:30px 18px;text-align:center;font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--dim);}
+
+  /* Modal de confirmación */
+  .modal-overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:1000;}
+  .modal-box{background:#fff;border-radius:16px;padding:24px 28px;max-width:360px;width:90%;text-align:center;box-shadow:0 12px 40px rgba(0,0,0,0.2);}
+  .modal-box h3{margin:0 0 6px;font-size:17px;}
+  .modal-box p{margin:6px 0 16px;font-size:14px;color:var(--dim);}
+  .modal-box .modal-buttons{display:flex;gap:10px;justify-content:center;}
+  .modal-box .modal-buttons button{padding:8px 24px;border:none;border-radius:10px;font-weight:600;font-size:14px;cursor:pointer;}
+  .modal-box .modal-buttons .confirm{background:var(--lo);color:#fff;}
+  .modal-box .modal-buttons .cancel{background:var(--line);color:var(--ink);}
 </style>
 </head>
 <body>
@@ -115,6 +143,9 @@
           <option value="alta">Alta</option>
           <option value="media" selected>Media</option>
           <option value="baja">Baja</option>
+        </select>
+        <select id="taskAreaInput">
+          <option value="">Ninguna</option>
         </select>
         <button id="saveTaskBtn">Agregar</button>
       </div>
@@ -154,13 +185,26 @@
   </div>
 </div>
 
+<!-- Modal de confirmación -->
+<div class="modal-overlay" id="confirmModal" style="display:none;">
+  <div class="modal-box">
+    <h3 id="modalTitle">¿Confirmar?</h3>
+    <p id="modalMessage">¿Estás seguro que quieres completar esta tarea?</p>
+    <div class="modal-buttons">
+      <button class="cancel" id="modalCancel">Cancelar</button>
+      <button class="confirm" id="modalConfirm">Sí, completar</button>
+    </div>
+  </div>
+</div>
+
 <script>
   // Pega aquí la URL de tu Web App de Apps Script (debe terminar en /exec)
-  const API_URL = "https://script.google.com/macros/s/AKfycbw77tOb6wOb6Y8mS7zEfOOYwIFmiNOrHQ10r7k2ZO-XtgpDf2rMBnsebFh3vR0WgiNUKg/exec";
+  const API_URL = "https://script.google.com/macros/s/AKfycbz9cfeiqVFFh_xpusy3EhXloR9g64eIMVsOisgp_qf_Of5QPDhZOXyvEb8OfHWjEoZwKA/exec";
   const NOMBRE_USUARIO = "Jorge";
 
   let lastData = null;
   let selectedAreaId = null;
+  let pendingAction = null; // Para el modal de confirmación
 
   // ---------- Saludo dinámico ----------
   function setGreeting(){
@@ -170,6 +214,31 @@
   }
   setGreeting();
   document.getElementById('today').textContent = new Date().toLocaleDateString('es-PE', { weekday:'long', day:'numeric', month:'long' });
+
+  // ---------- Modal de confirmación ----------
+  function showConfirm(title, message, onConfirm) {
+    return new Promise((resolve) => {
+      const modal = document.getElementById('confirmModal');
+      document.getElementById('modalTitle').textContent = title;
+      document.getElementById('modalMessage').textContent = message;
+      modal.style.display = 'flex';
+      
+      const confirmBtn = document.getElementById('modalConfirm');
+      const cancelBtn = document.getElementById('modalCancel');
+      
+      const cleanup = () => {
+        modal.style.display = 'none';
+        confirmBtn.removeEventListener('click', onConfirmHandler);
+        cancelBtn.removeEventListener('click', onCancelHandler);
+      };
+      
+      const onConfirmHandler = () => { cleanup(); resolve(true); };
+      const onCancelHandler = () => { cleanup(); resolve(false); };
+      
+      confirmBtn.addEventListener('click', onConfirmHandler);
+      cancelBtn.addEventListener('click', onCancelHandler);
+    });
+  }
 
   // ---------- JSONP para Apps Script ----------
   function fetchJSONP(url){
@@ -186,7 +255,7 @@
     return fetch(API_URL, { method:'POST', mode:'no-cors', body: JSON.stringify(body) });
   }
 
-  // ---------- Ticker: dólar + clima Miraflores (directo, sin backend) ----------
+  // ---------- Ticker: dólar + clima Miraflores ----------
   async function loadTicker(){
     let dollarTxt = 'USD→PEN: cargando…';
     let weatherTxt = 'Clima: cargando…';
@@ -202,29 +271,58 @@
     }catch(e){}
     const dateTxt = new Date().toLocaleDateString('es-PE', { weekday:'long', day:'numeric', month:'long', year:'numeric' });
     const content = `<span>${dollarTxt}</span><span>${weatherTxt}</span><span>${dateTxt}</span>`;
-    document.getElementById('tickerTrack').innerHTML = content + content; // se repite para el loop continuo
+    document.getElementById('tickerTrack').innerHTML = content + content;
   }
 
-  // ---------- Tareas ----------
+  // ---------- Tareas de hoy ----------
   function renderTasks(tasks){
     const el = document.getElementById('tasksList');
-    if(!tasks.length){ el.innerHTML = '<div class="empty">Sin tareas pendientes. ¡Agrega una!</div>'; return; }
+    if(!tasks.length){ el.innerHTML = '<div class="empty">Sin tareas para hoy. ¡Agrega una!</div>'; return; }
     const order = { alta:0, media:1, baja:2 };
     tasks.sort((a,b) => (a.done - b.done) || (order[a.priority]-order[b.priority]));
-    el.innerHTML = tasks.map(t => `
-      <div class="task-row">
-        <div class="task-priority ${t.priority}"></div>
-        <div class="task-check ${t.done?'done':''}" data-id="${t.id}" data-done="${t.done}">${t.done?'✓':''}</div>
-        <div class="task-title ${t.done?'done':''}">${t.title}</div>
-      </div>
-    `).join('');
+    
+    // Obtener nombres de áreas para mostrar tags
+    const areaMap = {};
+    if(lastData && lastData.areas){
+      lastData.areas.forEach(a => areaMap[a.id] = a.label);
+    }
+    
+    el.innerHTML = tasks.map(t => {
+      const areaLabel = t.areaId && areaMap[t.areaId] ? areaMap[t.areaId] : '';
+      return `
+        <div class="task-row">
+          <div class="task-priority ${t.priority}"></div>
+          <div class="task-check ${t.done?'done':''}" data-id="${t.id}" data-done="${t.done}">${t.done?'✓':''}</div>
+          <div class="task-title ${t.done?'done':''}">${t.title} ${areaLabel ? `<span class="task-area-tag">${areaLabel}</span>` : ''}</div>
+        </div>
+      `;
+    }).join('');
+    
     el.querySelectorAll('.task-check').forEach(chk => {
       chk.addEventListener('click', async () => {
-        const done = chk.dataset.done !== 'true';
-        chk.classList.toggle('done', done);
-        chk.textContent = done ? '✓' : '';
-        chk.nextElementSibling.classList.toggle('done', done);
-        await postSilent({ action:'toggleTask', id: chk.dataset.id, done: done });
+        const id = chk.dataset.id;
+        const currentDone = chk.dataset.done === 'true';
+        const newDone = !currentDone;
+        
+        // Si se está marcando como completada (no desmarcando)
+        if (newDone) {
+          const task = tasks.find(t => t.id === id);
+          const confirmed = await showConfirm(
+            '✅ Completar tarea',
+            `¿Estás seguro que quieres completar "${task.title}"?`,
+            () => {}
+          );
+          if (!confirmed) return;
+        }
+        
+        // Actualizar visualmente
+        chk.classList.toggle('done', newDone);
+        chk.textContent = newDone ? '✓' : '';
+        chk.dataset.done = newDone;
+        chk.nextElementSibling.classList.toggle('done', newDone);
+        
+        await postSilent({ action:'toggleTask', id, done: newDone });
+        await loadDashboard(true);
       });
     });
   }
@@ -275,31 +373,140 @@
     const area = lastData.areas.find(a => a.id === selectedAreaId);
     if(!area){ detail.style.display = 'none'; return; }
     detail.style.display = 'block';
-    detail.innerHTML = `
-      <div style="font-weight:700;margin-bottom:6px;">${area.label}</div>
-      ${area.items.map(i => `
-        <div class="item-row ${i.done?'done':''}">
-          <div class="item-check ${i.done?'done':''}" data-id="${i.id}" data-done="${i.done}"></div>
-          <div class="item-label">${i.label}</div>
+    
+    // Items de progreso (checklist)
+    const itemsHtml = area.items.length ? area.items.map(i => `
+      <div class="item-row ${i.done?'done':''}">
+        <div class="item-check ${i.done?'done':''}" data-id="${i.id}" data-done="${i.done}"></div>
+        <div class="item-label">${i.label}</div>
+      </div>
+    `).join('') : '<div class="empty">Sin items de progreso aún.</div>';
+    
+    // Tareas asociadas al área
+    const tasksHtml = area.tasks && area.tasks.length ? area.tasks.map(t => {
+      const isToday = t.isToday === true || t.isToday === 'true';
+      const isDone = t.done === true || t.done === 'true';
+      return `
+        <div class="area-task-row">
+          <div class="area-task-priority ${t.priority}" style="background:${t.priority === 'alta' ? 'var(--hi)' : t.priority === 'media' ? 'var(--mid)' : 'var(--lo)'}"></div>
+          <div class="area-task-check ${isDone?'done':''}" data-id="${t.id}" data-done="${isDone}">${isDone?'✓':''}</div>
+          <div class="area-task-title ${isDone?'done':''}">${t.title}</div>
+          <button class="today-toggle ${isToday?'active':''}" data-id="${t.id}" data-today="${isToday}">${isToday ? '✓ Hoy' : '+ Hoy'}</button>
         </div>
-      `).join('') || '<div class="empty">Sin items aún.</div>'}
-      <div class="inline-form" style="display:flex;margin-top:10px;">
-        <input type="text" id="newItemInput" placeholder="Nuevo item..." maxlength="80">
+      `;
+    }).join('') : '<div class="empty">Sin tareas asociadas a esta área.</div>';
+    
+    detail.innerHTML = `
+      <div style="font-weight:700;margin-bottom:6px;font-size:16px;">${area.label}</div>
+      
+      <div class="section-subtitle">📋 Items de progreso</div>
+      ${itemsHtml}
+      <div class="inline-form" style="display:flex;margin-top:8px;">
+        <input type="text" id="newItemInput" placeholder="Nuevo item de progreso..." maxlength="80">
         <button id="saveItemBtn">+</button>
       </div>
+      
+      <div class="section-subtitle" style="margin-top:16px;">📌 Tareas asociadas</div>
+      ${tasksHtml}
+      <div class="inline-form" style="display:flex;margin-top:8px;">
+        <input type="text" id="newAreaTaskInput" placeholder="Nueva tarea del área..." maxlength="120">
+        <select id="newAreaTaskPriority" style="padding:9px;border:1px solid var(--line);border-radius:8px;font-family:'Space Grotesk',sans-serif;font-size:13px;">
+          <option value="alta">Alta</option>
+          <option value="media" selected>Media</option>
+          <option value="baja">Baja</option>
+        </select>
+        <button id="saveAreaTaskBtn">+</button>
+      </div>
     `;
+    
+    // Eventos para items de progreso
     detail.querySelectorAll('.item-check').forEach(chk => {
       chk.addEventListener('click', async () => {
-        const done = chk.dataset.done !== 'true';
-        await postSilent({ action:'toggleAreaItem', id: chk.dataset.id, done });
+        const id = chk.dataset.id;
+        const currentDone = chk.dataset.done === 'true';
+        const newDone = !currentDone;
+        
+        if (newDone) {
+          const item = area.items.find(i => i.id === id);
+          const confirmed = await showConfirm(
+            '✅ Completar item',
+            `¿Estás seguro que quieres completar "${item.label}"?`,
+            () => {}
+          );
+          if (!confirmed) return;
+        }
+        
+        chk.classList.toggle('done', newDone);
+        chk.dataset.done = newDone;
+        chk.parentElement.classList.toggle('done', newDone);
+        await postSilent({ action:'toggleAreaItem', id, done: newDone });
         await loadDashboard(true);
         renderAreaDetail();
       });
     });
+    
+    // Eventos para tareas del área
+    detail.querySelectorAll('.area-task-check').forEach(chk => {
+      chk.addEventListener('click', async () => {
+        const id = chk.dataset.id;
+        const currentDone = chk.dataset.done === 'true';
+        const newDone = !currentDone;
+        
+        if (newDone) {
+          const task = area.tasks.find(t => t.id === id);
+          const confirmed = await showConfirm(
+            '✅ Completar tarea',
+            `¿Estás seguro que quieres completar "${task.title}"?`,
+            () => {}
+          );
+          if (!confirmed) return;
+        }
+        
+        chk.classList.toggle('done', newDone);
+        chk.dataset.done = newDone;
+        chk.textContent = newDone ? '✓' : '';
+        chk.parentElement.querySelector('.area-task-title').classList.toggle('done', newDone);
+        await postSilent({ action:'toggleTask', id, done: newDone });
+        await loadDashboard(true);
+        renderAreaDetail();
+      });
+    });
+    
+    // Eventos para toggle "Agregar a hoy"
+    detail.querySelectorAll('.today-toggle').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const id = btn.dataset.id;
+        const currentToday = btn.dataset.today === 'true';
+        const newToday = !currentToday;
+        
+        btn.classList.toggle('active', newToday);
+        btn.textContent = newToday ? '✓ Hoy' : '+ Hoy';
+        btn.dataset.today = newToday;
+        
+        await postSilent({ action:'toggleTaskToday', id, isToday: newToday });
+        await loadDashboard(true);
+        renderAreaDetail();
+      });
+    });
+    
+    // Agregar nuevo item de progreso
     document.getElementById('saveItemBtn').addEventListener('click', async () => {
       const input = document.getElementById('newItemInput');
       if(!input.value.trim()) return;
       await postSilent({ action:'addAreaItem', areaId: selectedAreaId, label: input.value.trim() });
+      input.value = '';
+      await new Promise(r => setTimeout(r, 600));
+      await loadDashboard(true);
+      renderAreaDetail();
+    });
+    
+    // Agregar nueva tarea del área
+    document.getElementById('saveAreaTaskBtn').addEventListener('click', async () => {
+      const input = document.getElementById('newAreaTaskInput');
+      if(!input.value.trim()) return;
+      const priority = document.getElementById('newAreaTaskPriority').value;
+      await postSilent({ action:'addTask', title: input.value.trim(), priority, areaId: selectedAreaId });
+      input.value = '';
       await new Promise(r => setTimeout(r, 600));
       await loadDashboard(true);
       renderAreaDetail();
@@ -333,15 +540,28 @@
   }
 
   // ---------- Formularios ----------
+  function updateAreaSelector(){
+    const select = document.getElementById('taskAreaInput');
+    select.innerHTML = '<option value="">Ninguna</option>';
+    if(lastData && lastData.areas){
+      lastData.areas.forEach(a => {
+        select.innerHTML += `<option value="${a.id}">${a.label}</option>`;
+      });
+    }
+  }
+
   document.getElementById('showTaskForm').addEventListener('click', () => {
     const f = document.getElementById('taskForm');
     f.style.display = f.style.display === 'flex' ? 'none' : 'flex';
+    updateAreaSelector();
   });
+  
   document.getElementById('saveTaskBtn').addEventListener('click', async () => {
     const title = document.getElementById('taskTitleInput').value.trim();
     if(!title) return;
     const priority = document.getElementById('taskPriorityInput').value;
-    await postSilent({ action:'addTask', title, priority });
+    const areaId = document.getElementById('taskAreaInput').value;
+    await postSilent({ action:'addTaskToday', title, priority, areaId });
     document.getElementById('taskTitleInput').value = '';
     await new Promise(r => setTimeout(r, 700));
     await loadDashboard(true);
