@@ -184,10 +184,9 @@
 </div>
 
 <script>
-  const API_URL = "https://script.google.com/macros/s/AKfycbz9cfeiqVFFh_xpusy3EhXloR9g64eIMVsOisgp_qf_Of5QPDhZOXyvEb8OfHWjEoZwKA/exec";
+  // IMPORTANTE: Reemplaza con tu URL real
+  const API_URL = "https://script.google.com/macros/s/AKfycbw77tOb6wOb6Y8mS7zEfOOYwIFmiNOrHQ10r7k2ZO-XtgpDf2rMBnsebFh3vR0WgiNUKg/exec";
   const NOMBRE_USUARIO = "Jorge";
-  const CACHE_KEY = 'dashboard_data';
-  const CACHE_TIME = 60 * 60 * 1000; // 1 hora
 
   let lastData = null;
   let selectedAreaId = null;
@@ -201,23 +200,11 @@
   setGreeting();
   document.getElementById('today').textContent = new Date().toLocaleDateString('es-PE', { weekday:'long', day:'numeric', month:'long' });
 
-  // ---------- Caché local ----------
-  function getCachedData(){
-    try {
-      const raw = localStorage.getItem(CACHE_KEY);
-      if(!raw) return null;
-      const data = JSON.parse(raw);
-      if(Date.now() - data._timestamp < CACHE_TIME){
-        return data;
-      }
-      return null;
-    } catch(e){ return null; }
-  }
-
-  function setCachedData(data){
-    data._timestamp = Date.now();
-    localStorage.setItem(CACHE_KEY, JSON.stringify(data));
-  }
+  // ---------- Limpiar caché al cargar ----------
+  // Eliminar caché local para asegurar datos frescos
+  try {
+    localStorage.removeItem('dashboard_data');
+  } catch(e) {}
 
   // ---------- Modal ----------
   function showConfirm(title, message) {
@@ -262,7 +249,7 @@
     return fetch(API_URL, { method:'POST', mode:'no-cors', body: JSON.stringify(body) });
   }
 
-  // ---------- Ticker (carga paralela) ----------
+  // ---------- Ticker ----------
   async function loadTicker(){
     const tickerEl = document.getElementById('tickerTrack');
     let dollarTxt = 'USD→PEN: ...';
@@ -284,7 +271,13 @@
 
   // ---------- Renderizado ----------
   function renderAll(data){
-    if(!data) return;
+    if(!data) {
+      console.error('No hay datos para renderizar');
+      return;
+    }
+    console.log('Datos recibidos:', data);
+    console.log('scoreDone:', data.scoreDone, 'scoreTotal:', data.scoreTotal);
+    
     lastData = data;
     renderTasks(data.tasks);
     renderScore(data.scoreDone || 0, data.scoreTotal || 0);
@@ -339,7 +332,7 @@
         if(titleEl) titleEl.classList.toggle('done', newDone);
         
         await postSilent({ action:'toggleTask', id, done: newDone });
-        await refreshData();
+        await loadDashboard(true);
       });
     });
   }
@@ -348,6 +341,7 @@
     const badge = document.getElementById('scoreBadge');
     if (badge) {
       badge.textContent = `${done} / ${total}`;
+      console.log('Score actualizado:', `${done} / ${total}`);
     }
   }
 
@@ -461,7 +455,7 @@
         chk.dataset.done = newDone;
         chk.parentElement.classList.toggle('done', newDone);
         await postSilent({ action:'toggleAreaItem', id, done: newDone });
-        await refreshData();
+        await loadDashboard(true);
       });
     });
     
@@ -482,7 +476,7 @@
         const titleEl = chk.parentElement.querySelector('.area-task-title');
         if(titleEl) titleEl.classList.toggle('done', newDone);
         await postSilent({ action:'toggleTask', id, done: newDone });
-        await refreshData();
+        await loadDashboard(true);
       });
     });
     
@@ -496,7 +490,7 @@
         btn.textContent = newToday ? '✓ Hoy' : '+ Hoy';
         btn.dataset.today = newToday;
         await postSilent({ action:'toggleTaskToday', id, isToday: newToday });
-        await refreshData();
+        await loadDashboard(true);
       });
     });
     
@@ -510,7 +504,7 @@
         if(!input.value.trim()) return;
         await postSilent({ action:'addAreaItem', areaId: selectedAreaId, label: input.value.trim() });
         input.value = '';
-        await refreshData();
+        await loadDashboard(true);
       });
     }
     
@@ -525,7 +519,7 @@
         const priority = document.getElementById('newAreaTaskPriority').value;
         await postSilent({ action:'addTask', title: input.value.trim(), priority, areaId: selectedAreaId });
         input.value = '';
-        await refreshData();
+        await loadDashboard(true);
       });
     }
   }
@@ -580,7 +574,7 @@
     const areaId = document.getElementById('taskAreaInput').value;
     await postSilent({ action:'addTaskToday', title, priority, areaId });
     document.getElementById('taskTitleInput').value = '';
-    await refreshData();
+    await loadDashboard(true);
   });
 
   document.getElementById('showAreaForm').addEventListener('click', () => {
@@ -592,7 +586,7 @@
     if(!label) return;
     await postSilent({ action:'addArea', label });
     document.getElementById('areaLabelInput').value = '';
-    await refreshData();
+    await loadDashboard(true);
   });
 
   document.getElementById('showAppForm').addEventListener('click', () => {
@@ -605,7 +599,7 @@
     const type = document.getElementById('appTypeInput').value;
     await postSilent({ action:'addApplication', type, name, status:'Postulado' });
     document.getElementById('appNameInput').value = '';
-    await refreshData();
+    await loadDashboard(true);
   });
 
   document.getElementById('historyToggle').addEventListener('click', () => {
@@ -613,28 +607,13 @@
     chart.style.display = chart.style.display === 'flex' ? 'none' : 'flex';
   });
 
-  // ---------- Carga y refresco ----------
-  async function refreshData(){
-    await loadDashboard(true);
-  }
-
+  // ---------- Carga ----------
   async function loadDashboard(silent){
     try {
-      // Primero mostrar datos cacheados si existen
-      const cached = getCachedData();
-      if(cached && cached.data){
-        renderAll(cached.data);
-        if(!silent){
-          document.getElementById('loadingMsg').style.display = 'none';
-          document.getElementById('content').style.display = 'block';
-        }
-      }
-      
-      // Luego cargar datos frescos del servidor
+      // Cargar datos frescos del servidor
+      console.log('Cargando datos del servidor...');
       const data = await fetchJSONP(API_URL + '?view=dashboard&t=' + Date.now());
-      
-      // Guardar en caché local
-      setCachedData(data);
+      console.log('Datos recibidos del servidor:', data);
       
       // Renderizar con datos frescos
       renderAll(data);
@@ -645,10 +624,7 @@
       }
     } catch(err) {
       console.error('Error loading dashboard:', err);
-      // Si no hay datos cacheados, mostrar error
-      if(!getCachedData()){
-        document.getElementById('loadingMsg').textContent = 'No se pudo cargar el dashboard. Revisa API_URL.';
-      }
+      document.getElementById('loadingMsg').textContent = 'No se pudo cargar el dashboard. Revisa API_URL.';
     }
   }
 
