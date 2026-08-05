@@ -1,0 +1,405 @@
+<!-- VERSION4 mockup instructions inserted -->
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mi Dashboard</title>
+<link rel="icon" href="data:,">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#0F1419; --dim:#536471; --line:#EBEEF0;
+    --steel:#3D5A80; --amber:#EE6C4D; --paper:#F7F4EE;
+    --hi:#D64545; --mid:#D6A72A; --lo:#4C7A5A; --bg:#fff;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;background:var(--paper);color:var(--ink);font-family:'Space Grotesk',sans-serif;-webkit-font-smoothing:antialiased;}
+  .wrap{max-width:600px;margin:0 auto;background:var(--bg);min-height:100vh;border-left:1px solid var(--line);border-right:1px solid var(--line);padding-bottom:60px;}
+
+  header.top{padding:20px 18px 4px;}
+  header.top .greeting{font-size:23px;font-weight:700;margin:0;}
+  header.top .date{font-family:'IBM Plex Mono',monospace;font-size:11.5px;color:var(--dim);text-transform:uppercase;margin-top:2px;}
+  .navlink{display:inline-block;margin-top:10px;font-family:'IBM Plex Mono',monospace;font-size:11.5px;color:var(--steel);text-decoration:none;border:1px solid var(--line);padding:5px 10px;border-radius:14px;}
+
+  /* Ticker */
+  .ticker-wrap{background:var(--ink);overflow:hidden;white-space:nowrap;padding:8px 0;margin-top:14px;}
+  .ticker-track{display:inline-block;padding-left:100%;animation:scroll-left 32s linear infinite;}
+  .ticker-track span{color:#fff;font-family:'IBM Plex Mono',monospace;font-size:12px;margin-right:34px;}
+  .ticker-track span b{color:var(--amber);}
+  @keyframes scroll-left{ from{transform:translateX(0);} to{transform:translateX(-100%);} }
+
+  section{padding:18px;border-bottom:8px solid var(--paper);}
+  .section-title{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;}
+  .section-title h2{font-size:15px;margin:0;font-weight:700;}
+  .section-title .score-badge{font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:600;color:var(--steel);}
+
+  /* Tasks */
+  .task-row{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--line);}
+  .task-row:last-child{border-bottom:none;}
+  .task-check{width:20px;height:20px;border-radius:50%;border:2px solid var(--line);flex:0 0 auto;cursor:pointer;display:flex;align-items:center;justify-content:center;}
+  .task-check.done{background:var(--lo);border-color:var(--lo);color:#fff;font-size:12px;}
+  .task-priority{width:4px;align-self:stretch;border-radius:2px;flex:0 0 auto;}
+  .task-priority.alta{background:var(--hi);}
+  .task-priority.media{background:var(--mid);}
+  .task-priority.baja{background:var(--lo);}
+  .task-title{flex:1;font-size:14.5px;}
+  .task-title.done{text-decoration:line-through;color:var(--dim);}
+
+  .add-btn{
+    width:100%;margin-top:10px;padding:10px;border:1px dashed var(--line);border-radius:10px;
+    background:none;font-family:'Space Grotesk',sans-serif;font-size:13.5px;color:var(--steel);cursor:pointer;
+  }
+  .inline-form{display:none;gap:8px;margin-top:10px;flex-wrap:wrap;}
+  .inline-form input[type=text]{flex:1;min-width:140px;padding:9px 12px;border:1px solid var(--line);border-radius:8px;font-family:'Space Grotesk',sans-serif;font-size:13.5px;}
+  .inline-form select{padding:9px;border:1px solid var(--line);border-radius:8px;font-family:'Space Grotesk',sans-serif;font-size:13px;}
+  .inline-form button{border:none;background:var(--amber);color:#fff;font-weight:600;border-radius:8px;padding:0 16px;font-size:13px;cursor:pointer;}
+
+  .empty{font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--dim);padding:8px 0;}
+
+  /* Score history */
+  .history-toggle{font-family:'IBM Plex Mono',monospace;font-size:11.5px;color:var(--steel);cursor:pointer;text-decoration:underline;}
+  .history-chart{display:none;align-items:flex-end;gap:4px;height:70px;margin-top:12px;}
+  .history-bar{flex:1;background:var(--steel);border-radius:3px 3px 0 0;min-height:2px;position:relative;}
+  .history-bar .lbl{position:absolute;bottom:-16px;left:0;right:0;text-align:center;font-family:'IBM Plex Mono',monospace;font-size:8px;color:var(--dim);}
+
+  /* Progress circles */
+  .areas-grid{display:flex;flex-wrap:wrap;gap:16px;}
+  .area-card{flex:0 0 auto;width:96px;text-align:center;cursor:pointer;}
+  .area-card svg{transform:rotate(-90deg);}
+  .area-card .pct{font-family:'IBM Plex Mono',monospace;font-size:14px;font-weight:600;}
+  .area-card .lbl{font-size:11.5px;margin-top:4px;line-height:1.3;}
+  .area-detail{display:none;margin-top:14px;border:1px solid var(--line);border-radius:10px;padding:12px;}
+  .area-detail .item-row{display:flex;align-items:center;gap:8px;padding:6px 0;font-size:13px;}
+  .area-detail .item-row.done .item-label{text-decoration:line-through;color:var(--dim);}
+  .item-check{width:16px;height:16px;border-radius:4px;border:2px solid var(--line);flex:0 0 auto;cursor:pointer;}
+  .item-check.done{background:var(--lo);border-color:var(--lo);}
+
+  /* Applications */
+  .app-row{padding:10px 0;border-bottom:1px solid var(--line);}
+  .app-row:last-child{border-bottom:none;}
+  .app-head{display:flex;justify-content:space-between;align-items:center;}
+  .app-name{font-size:14px;font-weight:600;}
+  .app-type{font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--dim);text-transform:uppercase;}
+  .status-badge{font-family:'IBM Plex Mono',monospace;font-size:10.5px;padding:3px 9px;border-radius:12px;background:var(--hover,#F7F8F8);border:1px solid var(--line);cursor:pointer;}
+  .app-notes{font-size:12.5px;color:var(--dim);margin-top:2px;}
+
+  .loading{padding:30px 18px;text-align:center;font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--dim);}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="top">
+    <div class="greeting" id="greeting">Buenos días</div>
+    <div class="date" id="today"></div>
+    <a class="navlink" href="noticias.html">Ver noticias relevantes →</a>
+  </header>
+
+  <div class="ticker-wrap"><div class="ticker-track" id="tickerTrack"><span>Cargando…</span></div></div>
+
+  <div id="loadingMsg" class="loading">Cargando tu dashboard…</div>
+
+  <div id="content" style="display:none;">
+
+    <section id="tasksSection">
+      <div class="section-title">
+        <h2>Tareas de hoy</h2>
+        <span class="score-badge" id="scoreBadge">— / 100</span>
+      </div>
+      <div id="tasksList"></div>
+      <button class="add-btn" id="showTaskForm">+ Agregar tarea</button>
+      <div class="inline-form" id="taskForm">
+        <input type="text" id="taskTitleInput" placeholder="¿Qué tarea?" maxlength="120">
+        <select id="taskPriorityInput">
+          <option value="alta">Alta</option>
+          <option value="media" selected>Media</option>
+          <option value="baja">Baja</option>
+        </select>
+        <button id="saveTaskBtn">Agregar</button>
+      </div>
+      <div style="margin-top:12px;">
+        <span class="history-toggle" id="historyToggle">Ver historial de puntaje</span>
+        <div class="history-chart" id="historyChart"></div>
+      </div>
+    </section>
+
+    <section id="areasSection">
+      <div class="section-title"><h2>Progreso — mediano plazo</h2></div>
+      <div class="areas-grid" id="areasGrid"></div>
+      <button class="add-btn" id="showAreaForm">+ Nueva área</button>
+      <div class="inline-form" id="areaForm">
+        <input type="text" id="areaLabelInput" placeholder="Nombre del área" maxlength="60">
+        <button id="saveAreaBtn">Crear</button>
+      </div>
+      <div class="area-detail" id="areaDetail"></div>
+    </section>
+
+    <section id="appsSection">
+      <div class="section-title"><h2>Postulaciones</h2></div>
+      <div id="appsList"></div>
+      <button class="add-btn" id="showAppForm">+ Agregar postulación</button>
+      <div class="inline-form" id="appForm">
+        <input type="text" id="appNameInput" placeholder="Nombre (empresa, beca, master...)" maxlength="80">
+        <select id="appTypeInput">
+          <option value="Trabajo">Trabajo</option>
+          <option value="Voluntariado">Voluntariado</option>
+          <option value="Master">Master</option>
+          <option value="Beca">Beca</option>
+        </select>
+        <button id="saveAppBtn">Agregar</button>
+      </div>
+    </section>
+
+  </div>
+</div>
+
+<script>
+  // Pega aquí la URL de tu Web App de Apps Script (debe terminar en /exec)
+  const API_URL = "PEGA_AQUI_TU_URL_DE_APPS_SCRIPT";
+  const NOMBRE_USUARIO = "Jorge";
+
+  let lastData = null;
+  let selectedAreaId = null;
+
+  // ---------- Saludo dinámico ----------
+  function setGreeting(){
+    const h = new Date().getHours();
+    const g = h < 12 ? 'Buenos días' : h < 19 ? 'Buenas tardes' : 'Buenas noches';
+    document.getElementById('greeting').textContent = `${g}, ${NOMBRE_USUARIO}`;
+  }
+  setGreeting();
+  document.getElementById('today').textContent = new Date().toLocaleDateString('es-PE', { weekday:'long', day:'numeric', month:'long' });
+
+  // ---------- JSONP para Apps Script ----------
+  function fetchJSONP(url){
+    return new Promise((resolve, reject) => {
+      const cbName = 'jsonpCb_' + Date.now() + Math.floor(Math.random()*1000);
+      window[cbName] = (data) => { resolve(data); delete window[cbName]; s.remove(); };
+      const s = document.createElement('script');
+      s.src = url + (url.includes('?') ? '&' : '?') + 'callback=' + cbName;
+      s.onerror = () => reject(new Error('JSONP failed'));
+      document.body.appendChild(s);
+    });
+  }
+  function postSilent(body){
+    return fetch(API_URL, { method:'POST', mode:'no-cors', body: JSON.stringify(body) });
+  }
+
+  // ---------- Ticker: dólar + clima Miraflores (directo, sin backend) ----------
+  async function loadTicker(){
+    let dollarTxt = 'USD→PEN: cargando…';
+    let weatherTxt = 'Clima: cargando…';
+    try{
+      const r = await fetch('https://open.er-api.com/v6/latest/USD');
+      const d = await r.json();
+      if(d.rates && d.rates.PEN) dollarTxt = `USD → PEN <b>${d.rates.PEN.toFixed(3)}</b>`;
+    }catch(e){}
+    try{
+      const r = await fetch('https://api.open-meteo.com/v1/forecast?latitude=-12.12&longitude=-77.03&current=temperature_2m,relative_humidity_2m');
+      const d = await r.json();
+      if(d.current) weatherTxt = `Miraflores <b>${Math.round(d.current.temperature_2m)}°C</b> · Humedad <b>${d.current.relative_humidity_2m}%</b>`;
+    }catch(e){}
+    const dateTxt = new Date().toLocaleDateString('es-PE', { weekday:'long', day:'numeric', month:'long', year:'numeric' });
+    const content = `<span>${dollarTxt}</span><span>${weatherTxt}</span><span>${dateTxt}</span>`;
+    document.getElementById('tickerTrack').innerHTML = content + content; // se repite para el loop continuo
+  }
+
+  // ---------- Tareas ----------
+  function renderTasks(tasks){
+    const el = document.getElementById('tasksList');
+    if(!tasks.length){ el.innerHTML = '<div class="empty">Sin tareas pendientes. ¡Agrega una!</div>'; return; }
+    const order = { alta:0, media:1, baja:2 };
+    tasks.sort((a,b) => (a.done - b.done) || (order[a.priority]-order[b.priority]));
+    el.innerHTML = tasks.map(t => `
+      <div class="task-row">
+        <div class="task-priority ${t.priority}"></div>
+        <div class="task-check ${t.done?'done':''}" data-id="${t.id}" data-done="${t.done}">${t.done?'✓':''}</div>
+        <div class="task-title ${t.done?'done':''}">${t.title}</div>
+      </div>
+    `).join('');
+    el.querySelectorAll('.task-check').forEach(chk => {
+      chk.addEventListener('click', async () => {
+        const done = chk.dataset.done !== 'true';
+        chk.classList.toggle('done', done);
+        chk.textContent = done ? '✓' : '';
+        chk.nextElementSibling.classList.toggle('done', done);
+        await postSilent({ action:'toggleTask', id: chk.dataset.id, done: done });
+      });
+    });
+  }
+
+  function renderScore(score){
+    document.getElementById('scoreBadge').textContent = `${score} / 100`;
+  }
+
+  function renderHistory(history){
+    const el = document.getElementById('historyChart');
+    const rows = [...history].reverse().slice(-14);
+    if(!rows.length){ el.innerHTML = '<div class="empty">Aún no hay historial.</div>'; return; }
+    el.innerHTML = rows.map(r => `
+      <div class="history-bar" style="height:${Math.max(r.score,3)}%;">
+        <span class="lbl">${r.date.slice(5)}</span>
+      </div>
+    `).join('');
+  }
+
+  // ---------- Áreas de progreso ----------
+  function renderAreas(areas){
+    const grid = document.getElementById('areasGrid');
+    grid.innerHTML = areas.map(a => {
+      const c = 2*Math.PI*30;
+      const offset = c * (1 - a.percent/100);
+      return `
+        <div class="area-card" data-id="${a.id}">
+          <svg width="72" height="72" viewBox="0 0 72 72">
+            <circle cx="36" cy="36" r="30" stroke="#EBEEF0" stroke-width="7" fill="none"/>
+            <circle cx="36" cy="36" r="30" stroke="#3D5A80" stroke-width="7" fill="none"
+              stroke-dasharray="${c}" stroke-dashoffset="${offset}" stroke-linecap="round"/>
+          </svg>
+          <div class="pct">${a.percent}%</div>
+          <div class="lbl">${a.label}</div>
+        </div>
+      `;
+    }).join('');
+    grid.querySelectorAll('.area-card').forEach(card => {
+      card.addEventListener('click', () => {
+        selectedAreaId = card.dataset.id;
+        renderAreaDetail();
+      });
+    });
+  }
+
+  function renderAreaDetail(){
+    const detail = document.getElementById('areaDetail');
+    const area = lastData.areas.find(a => a.id === selectedAreaId);
+    if(!area){ detail.style.display = 'none'; return; }
+    detail.style.display = 'block';
+    detail.innerHTML = `
+      <div style="font-weight:700;margin-bottom:6px;">${area.label}</div>
+      ${area.items.map(i => `
+        <div class="item-row ${i.done?'done':''}">
+          <div class="item-check ${i.done?'done':''}" data-id="${i.id}" data-done="${i.done}"></div>
+          <div class="item-label">${i.label}</div>
+        </div>
+      `).join('') || '<div class="empty">Sin items aún.</div>'}
+      <div class="inline-form" style="display:flex;margin-top:10px;">
+        <input type="text" id="newItemInput" placeholder="Nuevo item..." maxlength="80">
+        <button id="saveItemBtn">+</button>
+      </div>
+    `;
+    detail.querySelectorAll('.item-check').forEach(chk => {
+      chk.addEventListener('click', async () => {
+        const done = chk.dataset.done !== 'true';
+        await postSilent({ action:'toggleAreaItem', id: chk.dataset.id, done });
+        await loadDashboard(true);
+        renderAreaDetail();
+      });
+    });
+    document.getElementById('saveItemBtn').addEventListener('click', async () => {
+      const input = document.getElementById('newItemInput');
+      if(!input.value.trim()) return;
+      await postSilent({ action:'addAreaItem', areaId: selectedAreaId, label: input.value.trim() });
+      await new Promise(r => setTimeout(r, 600));
+      await loadDashboard(true);
+      renderAreaDetail();
+    });
+  }
+
+  // ---------- Postulaciones ----------
+  const STATUS_OPTIONS = ['Postulado','Entrevista','Esperando respuesta','Aceptado','Rechazado'];
+  function renderApps(apps){
+    const el = document.getElementById('appsList');
+    if(!apps.length){ el.innerHTML = '<div class="empty">Sin postulaciones registradas.</div>'; return; }
+    el.innerHTML = apps.map(a => `
+      <div class="app-row">
+        <div class="app-head">
+          <div>
+            <div class="app-name">${a.name}</div>
+            <div class="app-type">${a.type} · ${a.date}</div>
+          </div>
+          <select class="status-badge" data-id="${a.id}">
+            ${STATUS_OPTIONS.map(s => `<option value="${s}" ${s===a.status?'selected':''}>${s}</option>`).join('')}
+          </select>
+        </div>
+        ${a.notes ? `<div class="app-notes">${a.notes}</div>` : ''}
+      </div>
+    `).join('');
+    el.querySelectorAll('.status-badge').forEach(sel => {
+      sel.addEventListener('change', async () => {
+        await postSilent({ action:'updateApplicationStatus', id: sel.dataset.id, status: sel.value });
+      });
+    });
+  }
+
+  // ---------- Formularios ----------
+  document.getElementById('showTaskForm').addEventListener('click', () => {
+    const f = document.getElementById('taskForm');
+    f.style.display = f.style.display === 'flex' ? 'none' : 'flex';
+  });
+  document.getElementById('saveTaskBtn').addEventListener('click', async () => {
+    const title = document.getElementById('taskTitleInput').value.trim();
+    if(!title) return;
+    const priority = document.getElementById('taskPriorityInput').value;
+    await postSilent({ action:'addTask', title, priority });
+    document.getElementById('taskTitleInput').value = '';
+    await new Promise(r => setTimeout(r, 700));
+    await loadDashboard(true);
+  });
+
+  document.getElementById('showAreaForm').addEventListener('click', () => {
+    const f = document.getElementById('areaForm');
+    f.style.display = f.style.display === 'flex' ? 'none' : 'flex';
+  });
+  document.getElementById('saveAreaBtn').addEventListener('click', async () => {
+    const label = document.getElementById('areaLabelInput').value.trim();
+    if(!label) return;
+    await postSilent({ action:'addArea', label });
+    document.getElementById('areaLabelInput').value = '';
+    await new Promise(r => setTimeout(r, 700));
+    await loadDashboard(true);
+  });
+
+  document.getElementById('showAppForm').addEventListener('click', () => {
+    const f = document.getElementById('appForm');
+    f.style.display = f.style.display === 'flex' ? 'none' : 'flex';
+  });
+  document.getElementById('saveAppBtn').addEventListener('click', async () => {
+    const name = document.getElementById('appNameInput').value.trim();
+    if(!name) return;
+    const type = document.getElementById('appTypeInput').value;
+    await postSilent({ action:'addApplication', type, name, status:'Postulado' });
+    document.getElementById('appNameInput').value = '';
+    await new Promise(r => setTimeout(r, 700));
+    await loadDashboard(true);
+  });
+
+  document.getElementById('historyToggle').addEventListener('click', () => {
+    const chart = document.getElementById('historyChart');
+    chart.style.display = chart.style.display === 'flex' ? 'none' : 'flex';
+  });
+
+  // ---------- Carga principal ----------
+  async function loadDashboard(silent){
+    try{
+      const data = await fetchJSONP(API_URL + '?view=dashboard');
+      lastData = data;
+      renderTasks(data.tasks);
+      renderScore(data.todayScore);
+      renderHistory(data.scoreHistory);
+      renderAreas(data.areas);
+      renderApps(data.applications);
+      if(!silent){
+        document.getElementById('loadingMsg').style.display = 'none';
+        document.getElementById('content').style.display = 'block';
+      }
+    }catch(err){
+      document.getElementById('loadingMsg').textContent = 'No se pudo cargar el dashboard. Revisa API_URL.';
+    }
+  }
+
+  loadTicker();
+  loadDashboard(false);
+</script>
+</body>
+</html>
